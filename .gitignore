@@ -1,7 +1,19 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[codz]
+*.py[cod]
 *$py.class
+
+# Environment variables
+.env
+
+# FastAPI logs
+app.log
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
 
 # C extensions
 *.so
