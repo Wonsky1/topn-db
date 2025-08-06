@@ -40,14 +40,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="OLX Database API",
     description="FastAPI service for managing OLX monitoring tasks and item records",
-    version="1.0.0",
     lifespan=lifespan,
-    contact={
-        "name": "API Support",
-        "email": "support@example.com",
-    },
-    docs_url="/docs",
-    redoc_url="/redoc",
 )
 
 # Add CORS middleware
@@ -70,9 +63,6 @@ async def root():
     """Root endpoint providing API information."""
     return {
         "message": "OLX Database API is running",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "redoc": "/redoc",
     }
 
 
