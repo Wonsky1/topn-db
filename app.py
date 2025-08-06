@@ -7,11 +7,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routers import items_router, tasks_router
 from core.database import init_db
 
+stream_handler = logging.StreamHandler()
+file_handler = logging.FileHandler("app.log")
+
+handlers = [stream_handler]
+
+if False:
+    handlers.append(file_handler)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler("app.log")],
+    handlers=handlers,
 )
 
 logger = logging.getLogger(__name__)
