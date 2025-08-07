@@ -7,3 +7,4 @@ pydantic[email]
 python-dotenv
 pytz
 python-multipart
+pydantic-settings

@@ -40,7 +40,7 @@ async def get_all_items(
 async def get_items_by_source_url(
     source_url: str = Query(..., description="Source URL to filter by"),
     limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of items to return"
+        100, ge=1, le=10000, description="Maximum number of items to return"
     ),
     db: Session = Depends(get_db),
 ):

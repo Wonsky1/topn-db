@@ -44,6 +44,18 @@ async def get_tasks_by_chat_id(chat_id: str, db: Session = Depends(get_db)):
 
 
 @router.get(
+    "/pending",
+    response_model=MonitoringTaskList,
+    summary="Get pending tasks",
+    description="Get tasks that are ready for processing based on frequency settings",
+)
+async def get_pending_tasks(db: Session = Depends(get_db)):
+    """Get pending monitoring tasks."""
+    tasks = TaskService.get_pending_tasks(db)
+    return MonitoringTaskList(tasks=tasks, total=len(tasks))
+
+
+@router.get(
     "/{task_id}",
     response_model=MonitoringTaskResponse,
     summary="Get task by ID",
@@ -133,18 +145,6 @@ async def delete_tasks_by_chat_id(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No tasks found for chat {chat_id}",
             )
-
-
-@router.get(
-    "/pending",
-    response_model=MonitoringTaskList,
-    summary="Get pending tasks",
-    description="Get tasks that are ready for processing based on frequency settings",
-)
-async def get_pending_tasks(db: Session = Depends(get_db)):
-    """Get pending monitoring tasks."""
-    tasks = TaskService.get_pending_tasks(db)
-    return MonitoringTaskList(tasks=tasks, total=len(tasks))
 
 
 @router.post(
