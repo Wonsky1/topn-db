@@ -68,6 +68,24 @@ async def get_recent_items(
 
 
 @router.get(
+    "/by-source/{source}",
+    response_model=ItemRecordList,
+    summary="Get items by source",
+    description="Retrieve items filtered by source (OLX or Otodom)",
+)
+async def get_items_by_source(
+    source: str = Path(..., description="Source to filter by (OLX or Otodom)"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of items to return"
+    ),
+    db: Session = Depends(get_db),
+):
+    """Get items by source."""
+    items = ItemService.get_items_by_source(db, source, limit=limit)
+    return ItemRecordList(items=items, total=len(items))
+
+
+@router.get(
     "/{item_id}",
     response_model=ItemRecordResponse,
     summary="Get item by ID",

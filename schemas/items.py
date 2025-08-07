@@ -26,6 +26,9 @@ class ItemRecordBase(BaseModel):
     )
     image_url: Optional[str] = Field(None, description="Image URL of the item")
     description: Optional[str] = Field(None, description="Description of the item")
+    source: Optional[str] = Field(
+        None, description="Source of the item (OLX or Otodom)"
+    )
 
 
 class ItemRecordCreate(ItemRecordBase):

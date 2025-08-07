@@ -18,6 +18,15 @@ class ItemService:
     @staticmethod
     def create_item(db: Session, item_data: ItemRecordCreate) -> ItemRecord:
         """Create a new item record."""
+        # Determine source based on item URL
+        source = item_data.source
+        if not source and item_data.item_url:
+            url_to_check = item_data.item_url
+            if "olx.pl" in url_to_check.lower():
+                source = "OLX"
+            elif "otodom.pl" in url_to_check.lower():
+                source = "Otodom"
+
         new_item = ItemRecord(
             item_url=item_data.item_url,
             source_url=item_data.source_url,
@@ -28,6 +37,7 @@ class ItemService:
             created_at_pretty=item_data.created_at_pretty,
             image_url=item_data.image_url,
             description=item_data.description,
+            source=source,
             first_seen=now_warsaw(),
         )
         db.add(new_item)
@@ -48,6 +58,19 @@ class ItemService:
         return (
             db.query(ItemRecord)
             .filter(ItemRecord.source_url == source_url)
+            .order_by(ItemRecord.first_seen.desc())
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
+    def get_items_by_source(
+        db: Session, source: str, limit: int = 100
+    ) -> List[ItemRecord]:
+        """Get items by source (OLX or Otodom)."""
+        return (
+            db.query(ItemRecord)
+            .filter(ItemRecord.source == source)
             .order_by(ItemRecord.first_seen.desc())
             .limit(limit)
             .all()
@@ -85,9 +108,17 @@ class ItemService:
                 .all()
             )
         else:
-            time_threshold = now_warsaw() - timedelta(
-                minutes=settings.DEFAULT_LAST_MINUTES_GETTING
-            )
+            if (
+                settings.DEFAULT_SENDING_FREQUENCY_MINUTES
+                > settings.DEFAULT_LAST_MINUTES_GETTING
+            ):
+                time_threshold = now_warsaw() - timedelta(
+                    minutes=settings.DEFAULT_SENDING_FREQUENCY_MINUTES
+                )
+            else:
+                time_threshold = now_warsaw() - timedelta(
+                    minutes=settings.DEFAULT_LAST_MINUTES_GETTING
+                )
             items_to_send = (
                 items_query.filter(
                     ItemRecord.first_seen > time_threshold,

@@ -25,10 +25,10 @@ class Settings(BaseSettings):
 
     # OLX specific settings (with OLX_ prefix)
     DEFAULT_SENDING_FREQUENCY_MINUTES: int = Field(
-        60, alias="OLX_DEFAULT_SENDING_FREQUENCY_MINUTES"
+        1, description="Default frequency for tasks getting from DB (default: 60)"
     )
     DEFAULT_LAST_MINUTES_GETTING: int = Field(
-        30, alias="OLX_DEFAULT_LAST_MINUTES_GETTING"
+        60, description="Default time window for new items (default: 30)"
     )
 
     @field_validator("DATABASE_URL")

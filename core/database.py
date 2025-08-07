@@ -88,4 +88,5 @@ class ItemRecord(Base):
     created_at_pretty = Column(String)
     image_url = Column(String, nullable=True)
     description = Column(String)
+    source = Column(String, nullable=True)
     first_seen = Column(DateTime, default=now_warsaw)
