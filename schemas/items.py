@@ -5,7 +5,7 @@ Pydantic schemas for item records.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ItemRecordBase(BaseModel):
@@ -41,8 +41,7 @@ class ItemRecordResponse(ItemRecordBase):
     id: int
     first_seen: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ItemRecordList(BaseModel):

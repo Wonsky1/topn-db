@@ -5,7 +5,7 @@ Pydantic schemas for monitoring tasks.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MonitoringTaskBase(BaseModel):
@@ -36,8 +36,7 @@ class MonitoringTaskResponse(MonitoringTaskBase):
     last_updated: datetime
     last_got_item: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MonitoringTaskList(BaseModel):
