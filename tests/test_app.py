@@ -1,4 +1,5 @@
 import logging
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -21,7 +22,8 @@ def test_root():
     assert response.json() == {"message": "OLX Database API is running"}
 
 
-def test_lifespan(caplog):
+@patch("app.init_db")
+def test_lifespan(mock_init_db, caplog):
     """Test the application lifespan events."""
     with caplog.at_level(logging.INFO):
         with TestClient(app):
@@ -29,3 +31,4 @@ def test_lifespan(caplog):
     assert "Starting OLX Database API..." in caplog.text
     assert "Database initialized" in caplog.text
     assert "Shutting down OLX Database API..." in caplog.text
+    mock_init_db.assert_called_once()
