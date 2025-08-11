@@ -38,4 +38,3 @@ jobs:
             --junitxml=junit.xml -o junit_family=legacy
         env:
           DATABASE_URL: "postgresql://user:password@host:9999/database"
-
