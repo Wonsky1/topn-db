@@ -17,6 +17,11 @@ RUN chmod +x ./entrypoint.sh
 # Expose port
 EXPOSE 8000
 
+ARG DATABASE_URL
+
+# Записуємо у змінні середовища
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Set entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
 
