@@ -11,7 +11,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: wonsky1/topn-db
+  IMAGE_NAME: topn-db
   USERNAME: wonsky1
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.USERNAME }}/topn-db:stg
+            ${{ env.REGISTRY }}/${{ env.USERNAME }}/${{ env.IMAGE_NAME }}:stg
           build-args: |
             DATABASE_URL=${{ secrets.STG_DATABASE_URL }}
           cache-from: type=gha
