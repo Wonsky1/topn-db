@@ -3,7 +3,7 @@ uvicorn[standard]==0.35.0
 sqlalchemy==2.0.42
 psycopg2-binary==2.9.10
 alembic==1.16.4
-pydantic[email]==2.11.7
+pydantic[email]==2.11.9
 python-dotenv==1.1.1
 pytz==2025.2
 python-multipart==0.0.20
