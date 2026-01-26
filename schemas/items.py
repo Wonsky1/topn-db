@@ -29,6 +29,10 @@ class ItemRecordBase(BaseModel):
     source: Optional[str] = Field(
         None, description="Source of the item (OLX or Otodom)"
     )
+    city_id: Optional[int] = Field(None, description="City ID for location filtering")
+    district_id: Optional[int] = Field(
+        None, description="District ID for location filtering"
+    )
 
 
 class ItemRecordCreate(ItemRecordBase):

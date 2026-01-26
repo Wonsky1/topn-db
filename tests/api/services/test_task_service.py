@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 
 from api.services.task_service import TaskService
-from core.database import MonitoringTask
+from core.database import District, MonitoringTask
 from schemas.tasks import MonitoringTaskCreate, MonitoringTaskUpdate
 
 
@@ -108,6 +108,126 @@ class TestTaskService(unittest.TestCase):
             self.assertTrue(result)
             self.assertIsNotNone(mock_task.last_got_item)
             mock_now.assert_called_once()
+
+    def test_create_task_without_districts(self):
+        """Test creating a task without allowed districts."""
+        task_data = MonitoringTaskCreate(
+            chat_id="c1",
+            name="n1",
+            url="http://test.com",
+            city_id=1,
+            allowed_district_ids=[],
+        )
+
+        with patch(
+            "core.database.MonitoringTask.has_url_for_chat", return_value=False
+        ), patch("api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)):
+            TaskService.create_task(self.db, task_data)
+
+            self.db.add.assert_called_once()
+            self.db.commit.assert_called_once()
+
+    def test_update_task_city_and_districts(self):
+        """Test updating task city and allowed districts."""
+        mock_task = MagicMock(spec=MonitoringTask)
+        mock_task.id = 1
+        mock_task.name = "old_name"
+        mock_task.url = "http://old.com"
+        mock_task.city_id = 1
+        mock_task.allowed_districts = []
+
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        district1 = MagicMock(spec=District)
+        district1.id = 5
+        district2 = MagicMock(spec=District)
+        district2.id = 6
+        self.db.query.return_value.filter.return_value.all.return_value = [
+            district1,
+            district2,
+        ]
+
+        update_data = MonitoringTaskUpdate(city_id=2, allowed_district_ids=[5, 6])
+
+        with patch(
+            "api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ):
+            updated_task = TaskService.update_task(self.db, 1, update_data)
+            self.assertEqual(updated_task.city_id, 2)
+
+    def test_update_task_clear_districts(self):
+        """Test clearing allowed districts from a task."""
+        mock_task = MagicMock(spec=MonitoringTask)
+        mock_task.id = 1
+        mock_task.name = "old_name"
+        mock_task.url = "http://old.com"
+        mock_task.allowed_districts = ["district1", "district2"]
+
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        update_data = MonitoringTaskUpdate(allowed_district_ids=[])
+
+        with patch(
+            "api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ):
+            updated_task = TaskService.update_task(self.db, 1, update_data)
+            self.assertEqual(updated_task.allowed_districts, [])
+
+    def test_get_all_tasks(self):
+        """Test getting all tasks."""
+        mock_tasks = [
+            MonitoringTask(id=1, name="task1"),
+            MonitoringTask(id=2, name="task2"),
+        ]
+        self.db.query.return_value.all.return_value = mock_tasks
+
+        result = TaskService.get_all_tasks(self.db)
+        self.assertEqual(result, mock_tasks)
+
+    def test_get_tasks_by_chat_id(self):
+        """Test getting tasks by chat ID."""
+        mock_tasks = [MonitoringTask(id=1, chat_id="c1")]
+        self.db.query.return_value.filter.return_value.all.return_value = mock_tasks
+
+        result = TaskService.get_tasks_by_chat_id(self.db, "c1")
+        self.assertEqual(result, mock_tasks)
+
+    def test_get_task_by_chat_and_name(self):
+        """Test getting task by chat ID and name."""
+        mock_task = MonitoringTask(id=1, chat_id="c1", name="task1")
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        result = TaskService.get_task_by_chat_and_name(self.db, "c1", "task1")
+        self.assertEqual(result, mock_task)
+
+    def test_get_task_by_id(self):
+        """Test getting task by ID."""
+        mock_task = MonitoringTask(id=1)
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        result = TaskService.get_task_by_id(self.db, 1)
+        self.assertEqual(result, mock_task)
+
+    def test_delete_task_by_chat_id_with_name(self):
+        """Test deleting a specific task by chat ID and name."""
+        mock_task = MonitoringTask(id=1, chat_id="c1", name="task1")
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        result = TaskService.delete_task_by_chat_id(self.db, "c1", "task1")
+        self.assertTrue(result)
+        self.db.delete.assert_called_once_with(mock_task)
+
+    def test_delete_all_tasks_by_chat_id(self):
+        """Test deleting all tasks for a chat ID."""
+        mock_tasks = [
+            MonitoringTask(id=1, chat_id="c1"),
+            MonitoringTask(id=2, chat_id="c1"),
+        ]
+        self.db.query.return_value.filter.return_value.all.return_value = mock_tasks
+
+        result = TaskService.delete_task_by_chat_id(self.db, "c1")
+        self.assertTrue(result)
+        self.assertEqual(self.db.delete.call_count, 2)
 
 
 if __name__ == "__main__":
