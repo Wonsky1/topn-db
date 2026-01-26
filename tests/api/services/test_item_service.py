@@ -151,7 +151,14 @@ class TestItemService(IsolatedAsyncioTestCase):
 
     async def test_get_items_to_send_for_task_with_last_got_item(self):
         task = type(
-            "T", (), {"last_got_item": datetime(2025, 1, 1, 10, 0, 0), "url": "src"}
+            "T",
+            (),
+            {
+                "last_got_item": datetime(2025, 1, 1, 10, 0, 0),
+                "url": "src",
+                "city_id": None,
+                "allowed_districts": [],
+            },
         )()
         q = self.db.query.return_value
         q.filter.return_value.order_by.return_value.all.return_value = ["a"]
@@ -159,7 +166,16 @@ class TestItemService(IsolatedAsyncioTestCase):
         assert res == ["a"]
 
     async def test_get_items_to_send_for_task_without_last_got_item_threshold(self):
-        task = type("T", (), {"last_got_item": None, "url": "src"})()
+        task = type(
+            "T",
+            (),
+            {
+                "last_got_item": None,
+                "url": "src",
+                "city_id": None,
+                "allowed_districts": [],
+            },
+        )()
         with patch(
             "api.services.item_service.settings.DEFAULT_SENDING_FREQUENCY_MINUTES", 60
         ), patch(
@@ -174,7 +190,16 @@ class TestItemService(IsolatedAsyncioTestCase):
             assert res == ["b"]
 
     async def test_get_items_to_send_for_task_default_threshold(self):
-        task = type("T", (), {"last_got_item": None, "url": "src"})()
+        task = type(
+            "T",
+            (),
+            {
+                "last_got_item": None,
+                "url": "src",
+                "city_id": None,
+                "allowed_districts": [],
+            },
+        )()
         with patch(
             "api.services.item_service.settings.DEFAULT_SENDING_FREQUENCY_MINUTES", 30
         ), patch(
@@ -194,7 +219,16 @@ class TestItemService(IsolatedAsyncioTestCase):
         assert ItemService.get_items_to_send_for_task_by_id(self.db, 1) == []
 
         # Test found
-        task = type("T", (), {"last_got_item": None, "url": "src"})()
+        task = type(
+            "T",
+            (),
+            {
+                "last_got_item": None,
+                "url": "src",
+                "city_id": None,
+                "allowed_districts": [],
+            },
+        )()
         self.db.query.return_value.filter.return_value.first.return_value = task
         with patch(
             "api.services.item_service.ItemService.get_items_to_send_for_task"
@@ -235,3 +269,145 @@ class TestItemService(IsolatedAsyncioTestCase):
                 1
             ]
             assert ItemService.get_recent_items(self.db, hours=1, limit=10) == [1]
+
+    async def test_normalize_name(self):
+        """Test name normalization with unidecode."""
+        assert ItemService._normalize_name("Warszawa") == "warszawa"
+        assert ItemService._normalize_name("Mokotów") == "mokotow"
+        assert ItemService._normalize_name("Śródmieście") == "srodmiescie"
+        assert ItemService._normalize_name("  Praga  ") == "praga"
+
+    async def test_parse_location_city_and_district(self):
+        """Test parsing location with city and district."""
+        city, district = ItemService._parse_location("Warszawa, Mokotów")
+        assert city == "Warszawa"
+        assert district == "Mokotów"
+
+    async def test_parse_location_city_only(self):
+        """Test parsing location with city only."""
+        city, district = ItemService._parse_location("Warszawa")
+        assert city == "Warszawa"
+        assert district == "Unknown"
+
+    async def test_parse_location_empty(self):
+        """Test parsing empty location."""
+        city, district = ItemService._parse_location("")
+        assert city == "Unknown"
+        assert district == "Unknown"
+
+        city, district = ItemService._parse_location(None)
+        assert city == "Unknown"
+        assert district == "Unknown"
+
+    async def test_parse_location_cleaned(self):
+        """Test that location is expected to be pre-cleaned."""
+        # After cleaning, "Odświeżono" should already be removed
+        city, district = ItemService._parse_location("Warszawa, Mokotów")
+        assert city == "Warszawa"
+        assert district == "Mokotów"
+
+    async def test_create_item_cleans_odswiezono(self):
+        """Test that create_item removes 'Odświeżono' from location."""
+        with patch(
+            "api.services.item_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ), patch(
+            "api.services.item_service.ItemService._get_or_create_city"
+        ) as mock_city, patch(
+            "api.services.item_service.ItemService._get_or_create_district"
+        ) as mock_district:
+            mock_city.return_value = type("City", (), {"id": 1})()
+            mock_district.return_value = type("District", (), {"id": 2})()
+
+            item = ItemService.create_item(
+                self.db,
+                type(
+                    "D",
+                    (),
+                    {
+                        "item_url": "https://www.olx.pl/x",
+                        "source_url": "s",
+                        "title": None,
+                        "price": None,
+                        "location": "Warszawa, Mokotów - Odświeżono",
+                        "created_at": None,
+                        "created_at_pretty": None,
+                        "image_url": None,
+                        "description": None,
+                        "source": None,
+                    },
+                )(),
+            )
+
+            # Location should be cleaned
+            assert item.location == "Warszawa, Mokotów"
+            # Parse should be called with cleaned location
+            mock_city.assert_called_once()
+            mock_district.assert_called_once()
+
+    async def test_get_items_to_send_with_city_filter(self):
+        """Test filtering items by city_id."""
+        task = type(
+            "T",
+            (),
+            {
+                "last_got_item": None,
+                "url": "src",
+                "city_id": 1,
+                "allowed_districts": [],
+            },
+        )()
+
+        # Mock the unknown city query
+        unknown_city = type("City", (), {"id": 99})()
+        self.db.query.return_value.filter.return_value.first.return_value = unknown_city
+
+        with patch(
+            "api.services.item_service.settings.DEFAULT_SENDING_FREQUENCY_MINUTES", 30
+        ), patch(
+            "api.services.item_service.settings.DEFAULT_LAST_MINUTES_GETTING", 60
+        ), patch(
+            "api.services.item_service.now_warsaw",
+            lambda: datetime(2025, 1, 1, 12, 0, 0),
+        ):
+            q = self.db.query.return_value
+            q.filter.return_value.filter.return_value.order_by.return_value.all.return_value = [
+                "item1"
+            ]
+            res = ItemService.get_items_to_send_for_task(self.db, task)
+            assert res == ["item1"]
+
+    async def test_get_items_to_send_with_district_filter(self):
+        """Test filtering items by allowed districts."""
+        district1 = type("District", (), {"id": 2})()
+        district2 = type("District", (), {"id": 3})()
+        task = type(
+            "T",
+            (),
+            {
+                "last_got_item": None,
+                "url": "src",
+                "city_id": None,
+                "allowed_districts": [district1, district2],
+            },
+        )()
+
+        # Mock the unknown district query
+        unknown_district = type("District", (), {"id": 99})()
+        self.db.query.return_value.filter.return_value.first.return_value = (
+            unknown_district
+        )
+
+        with patch(
+            "api.services.item_service.settings.DEFAULT_SENDING_FREQUENCY_MINUTES", 30
+        ), patch(
+            "api.services.item_service.settings.DEFAULT_LAST_MINUTES_GETTING", 60
+        ), patch(
+            "api.services.item_service.now_warsaw",
+            lambda: datetime(2025, 1, 1, 12, 0, 0),
+        ):
+            q = self.db.query.return_value
+            q.filter.return_value.filter.return_value.order_by.return_value.all.return_value = [
+                "item2"
+            ]
+            res = ItemService.get_items_to_send_for_task(self.db, task)
+            assert res == ["item2"]

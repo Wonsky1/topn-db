@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import items_router, tasks_router
+from api.routers import cities_router, districts_router, items_router, tasks_router
 from core.database import init_db
 
 stream_handler = logging.StreamHandler()
@@ -80,6 +80,8 @@ async def health_check():
 # Register routers
 app.include_router(tasks_router, prefix="/api/v1")
 app.include_router(items_router, prefix="/api/v1")
+app.include_router(cities_router, prefix="/api/v1")
+app.include_router(districts_router, prefix="/api/v1")
 
 
 if __name__ == "__main__":
