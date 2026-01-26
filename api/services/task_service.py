@@ -8,7 +8,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from core.config import settings
-from core.database import MonitoringTask, now_warsaw
+from core.database import District, MonitoringTask, now_warsaw
 from schemas.tasks import MonitoringTaskCreate, MonitoringTaskUpdate
 
 
@@ -43,7 +43,7 @@ class TaskService:
 
     @staticmethod
     def create_task(db: Session, task_data: MonitoringTaskCreate) -> MonitoringTask:
-        """Create a new monitoring task."""
+        """Create a new monitoring task with optional city and district filtering."""
         # Check if URL already exists for this chat
         if MonitoringTask.has_url_for_chat(db, task_data.chat_id, task_data.url):
             raise ValueError(
@@ -55,8 +55,20 @@ class TaskService:
             name=task_data.name,
             url=task_data.url,
             last_updated=now_warsaw(),
+            city_id=task_data.city_id,
         )
         db.add(new_task)
+        db.flush()  # Flush to get the ID before adding relationships
+
+        # Add allowed districts if provided
+        if task_data.allowed_district_ids:
+            districts = (
+                db.query(District)
+                .filter(District.id.in_(task_data.allowed_district_ids))
+                .all()
+            )
+            new_task.allowed_districts = districts
+
         db.commit()
         db.refresh(new_task)
         return new_task
@@ -65,7 +77,7 @@ class TaskService:
     def update_task(
         db: Session, task_id: int, task_data: MonitoringTaskUpdate
     ) -> Optional[MonitoringTask]:
-        """Update a monitoring task."""
+        """Update a monitoring task including city and district filters."""
         task = TaskService.get_task_by_id(db, task_id)
         if not task:
             return None
@@ -74,6 +86,22 @@ class TaskService:
             task.name = task_data.name
         if task_data.url is not None:
             task.url = task_data.url
+        if task_data.city_id is not None:
+            task.city_id = task_data.city_id
+
+        # Update allowed districts if provided
+        if task_data.allowed_district_ids is not None:
+            if task_data.allowed_district_ids:
+                # Replace with new districts
+                districts = (
+                    db.query(District)
+                    .filter(District.id.in_(task_data.allowed_district_ids))
+                    .all()
+                )
+                task.allowed_districts = districts
+            else:
+                # Clear all allowed districts if empty list provided
+                task.allowed_districts = []
 
         task.last_updated = now_warsaw()
         db.commit()

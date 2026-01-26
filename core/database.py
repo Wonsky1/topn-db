@@ -8,12 +8,14 @@ import pytz
 from sqlalchemy import (
     Column,
     DateTime,
+    ForeignKey,
     Integer,
     String,
+    Table,
     UniqueConstraint,
     create_engine,
 )
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.orm import Session, declarative_base, relationship, sessionmaker
 
 from .config import settings
 
@@ -47,6 +49,25 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
+# Association table for many-to-many relationship between MonitoringTask and District
+monitoring_task_districts = Table(
+    "monitoring_task_districts",
+    Base.metadata,
+    Column(
+        "monitoring_task_id",
+        Integer,
+        ForeignKey("monitoring_tasks.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "district_id",
+        Integer,
+        ForeignKey("districts.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
 class MonitoringTask(Base):
     """Model for monitoring tasks."""
 
@@ -58,6 +79,17 @@ class MonitoringTask(Base):
     url = Column(String, nullable=False)
     last_updated = Column(DateTime, nullable=False)
     last_got_item = Column(DateTime, nullable=True)
+    city_id = Column(
+        Integer, ForeignKey("cities.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    # Relationships
+    city = relationship("City", back_populates="monitoring_tasks")
+    allowed_districts = relationship(
+        "District",
+        secondary=monitoring_task_districts,
+        back_populates="monitoring_tasks",
+    )
 
     __table_args__ = (UniqueConstraint("chat_id", "name", name="uix_chat_id_name"),)
 
@@ -68,6 +100,47 @@ class MonitoringTask(Base):
             db.query(cls).filter(cls.chat_id == chat_id, cls.url == url).first()
             is not None
         )
+
+
+class City(Base):
+    """Model for cities."""
+
+    __tablename__ = "cities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name_raw = Column(String(255), nullable=False)
+    name_normalized = Column(String(255), nullable=False, unique=True)
+
+    # Relationships
+    districts = relationship("District", back_populates="city")
+    monitoring_tasks = relationship("MonitoringTask", back_populates="city")
+    items = relationship("ItemRecord", back_populates="city")
+
+
+class District(Base):
+    """Model for districts."""
+
+    __tablename__ = "districts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    city_id = Column(
+        Integer, ForeignKey("cities.id", ondelete="CASCADE"), nullable=False
+    )
+    name_raw = Column(String(255), nullable=False)
+    name_normalized = Column(String(255), nullable=False)
+
+    # Relationships
+    city = relationship("City", back_populates="districts")
+    monitoring_tasks = relationship(
+        "MonitoringTask",
+        secondary=monitoring_task_districts,
+        back_populates="allowed_districts",
+    )
+    items = relationship("ItemRecord", back_populates="district")
+
+    __table_args__ = (
+        UniqueConstraint("city_id", "name_normalized", name="uix_city_district"),
+    )
 
 
 class ItemRecord(Base):
@@ -89,3 +162,16 @@ class ItemRecord(Base):
     description = Column(String)
     source = Column(String, nullable=True)
     first_seen = Column(DateTime, default=now_warsaw)
+    city_id = Column(
+        Integer, ForeignKey("cities.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    district_id = Column(
+        Integer,
+        ForeignKey("districts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Relationships
+    city = relationship("City", back_populates="items")
+    district = relationship("District", back_populates="items")
