@@ -184,3 +184,146 @@ class TestTasksRouter(IsolatedAsyncioTestCase):
             urls = [it["item_url"] for it in r.json()["items"]]
             self.assertIn("https://www.olx.pl/item/b", urls)
             self.assertNotIn("https://www.olx.pl/item/a", urls)
+
+    async def test_create_task_with_graphql_fields_null(self):
+        """Test that newly created tasks have null GraphQL fields."""
+        payload = {
+            "chat_id": "c_graphql_1",
+            "name": "test_graphql",
+            "url": "https://www.olx.pl/d/oferty/q-test/",
+        }
+        r = self.client.post("/api/v1/tasks/", json=payload)
+        self.assertEqual(r.status_code, 201)
+        task = r.json()
+
+        # GraphQL fields should be null initially
+        self.assertIsNone(task.get("graphql_endpoint"))
+        self.assertIsNone(task.get("graphql_payload"))
+        self.assertIsNone(task.get("graphql_headers"))
+        self.assertIsNone(task.get("graphql_captured_at"))
+
+    async def test_update_task_with_graphql_endpoint(self):
+        """Test updating a task with GraphQL endpoint."""
+        # Create task
+        payload = {
+            "chat_id": "c_graphql_2",
+            "name": "test_graphql_update",
+            "url": "https://www.olx.pl/d/oferty/q-test/",
+        }
+        r = self.client.post("/api/v1/tasks/", json=payload)
+        self.assertEqual(r.status_code, 201)
+        tid = r.json()["id"]
+
+        # Update with GraphQL endpoint
+        update_payload = {"graphql_endpoint": "https://www.olx.pl/apigateway/graphql"}
+        r = self.client.put(f"/api/v1/tasks/{tid}", json=update_payload)
+        self.assertEqual(r.status_code, 200)
+        task = r.json()
+        self.assertEqual(
+            task["graphql_endpoint"], "https://www.olx.pl/apigateway/graphql"
+        )
+
+    async def test_update_task_with_all_graphql_fields(self):
+        """Test updating a task with all GraphQL fields."""
+        # Create task
+        payload = {
+            "chat_id": "c_graphql_3",
+            "name": "test_graphql_full",
+            "url": "https://www.olx.pl/d/oferty/q-test/",
+        }
+        r = self.client.post("/api/v1/tasks/", json=payload)
+        self.assertEqual(r.status_code, 201)
+        tid = r.json()["id"]
+
+        # Update with all GraphQL fields
+        update_payload = {
+            "graphql_endpoint": "https://www.olx.pl/apigateway/graphql",
+            "graphql_payload": {
+                "query": "query ListingSearchQuery { ... }",
+                "variables": {
+                    "searchParameters": [
+                        {"key": "category_id", "value": "14"},
+                        {"key": "city_id", "value": "17871"},
+                    ]
+                },
+            },
+            "graphql_headers": {
+                "content-type": "application/json",
+                "accept": "application/json",
+                "accept-language": "pl",
+                "x-client": "DESKTOP",
+            },
+            "graphql_captured_at": "2026-02-08T22:34:19.136000",
+        }
+        r = self.client.put(f"/api/v1/tasks/{tid}", json=update_payload)
+        self.assertEqual(r.status_code, 200)
+        task = r.json()
+
+        # Verify all GraphQL fields were updated
+        self.assertEqual(
+            task["graphql_endpoint"], "https://www.olx.pl/apigateway/graphql"
+        )
+        self.assertEqual(
+            task["graphql_payload"]["query"], "query ListingSearchQuery { ... }"
+        )
+        self.assertEqual(
+            len(task["graphql_payload"]["variables"]["searchParameters"]), 2
+        )
+        self.assertEqual(task["graphql_headers"]["content-type"], "application/json")
+        self.assertEqual(task["graphql_headers"]["x-client"], "DESKTOP")
+        self.assertIsNotNone(task["graphql_captured_at"])
+
+    async def test_get_task_with_graphql_fields(self):
+        """Test retrieving a task with GraphQL fields."""
+        # Create task
+        payload = {
+            "chat_id": "c_graphql_4",
+            "name": "test_graphql_get",
+            "url": "https://www.olx.pl/d/oferty/q-test/",
+        }
+        r = self.client.post("/api/v1/tasks/", json=payload)
+        tid = r.json()["id"]
+
+        # Update with GraphQL data
+        update_payload = {
+            "graphql_endpoint": "https://www.olx.pl/apigateway/graphql",
+            "graphql_payload": {"query": "test"},
+        }
+        self.client.put(f"/api/v1/tasks/{tid}", json=update_payload)
+
+        # Get task and verify GraphQL fields are included
+        r = self.client.get(f"/api/v1/tasks/{tid}")
+        self.assertEqual(r.status_code, 200)
+        task = r.json()
+        self.assertEqual(
+            task["graphql_endpoint"], "https://www.olx.pl/apigateway/graphql"
+        )
+        self.assertEqual(task["graphql_payload"]["query"], "test")
+
+    async def test_update_task_graphql_and_regular_fields_together(self):
+        """Test updating both GraphQL and regular fields in one request."""
+        # Create task
+        payload = {
+            "chat_id": "c_graphql_5",
+            "name": "old_name",
+            "url": "https://www.olx.pl/d/oferty/q-test/",
+        }
+        r = self.client.post("/api/v1/tasks/", json=payload)
+        tid = r.json()["id"]
+
+        # Update both regular and GraphQL fields
+        update_payload = {
+            "name": "new_name",
+            "graphql_endpoint": "https://www.olx.pl/apigateway/graphql",
+            "graphql_payload": {"query": "test query"},
+        }
+        r = self.client.put(f"/api/v1/tasks/{tid}", json=update_payload)
+        self.assertEqual(r.status_code, 200)
+        task = r.json()
+
+        # Verify both types of fields were updated
+        self.assertEqual(task["name"], "new_name")
+        self.assertEqual(
+            task["graphql_endpoint"], "https://www.olx.pl/apigateway/graphql"
+        )
+        self.assertEqual(task["graphql_payload"]["query"], "test query")

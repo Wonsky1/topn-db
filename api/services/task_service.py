@@ -89,6 +89,16 @@ class TaskService:
         if task_data.city_id is not None:
             task.city_id = task_data.city_id
 
+        # Update GraphQL fields if provided
+        if task_data.graphql_endpoint is not None:
+            task.graphql_endpoint = task_data.graphql_endpoint
+        if task_data.graphql_payload is not None:
+            task.graphql_payload = task_data.graphql_payload
+        if task_data.graphql_headers is not None:
+            task.graphql_headers = task_data.graphql_headers
+        if task_data.graphql_captured_at is not None:
+            task.graphql_captured_at = task_data.graphql_captured_at
+
         # Update allowed districts if provided
         if task_data.allowed_district_ids is not None:
             if task_data.allowed_district_ids:

@@ -229,6 +229,158 @@ class TestTaskService(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(self.db.delete.call_count, 2)
 
+    def test_update_task_graphql_endpoint(self):
+        """Test updating only the GraphQL endpoint."""
+        mock_task = MagicMock(spec=MonitoringTask)
+        mock_task.id = 1
+        mock_task.name = "task1"
+        mock_task.graphql_endpoint = None
+
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        update_data = MonitoringTaskUpdate(
+            graphql_endpoint="https://www.olx.pl/apigateway/graphql"
+        )
+
+        with patch(
+            "api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ):
+            updated_task = TaskService.update_task(self.db, 1, update_data)
+            self.assertEqual(
+                updated_task.graphql_endpoint,
+                "https://www.olx.pl/apigateway/graphql",
+            )
+
+    def test_update_task_graphql_payload(self):
+        """Test updating the GraphQL payload."""
+        mock_task = MagicMock(spec=MonitoringTask)
+        mock_task.id = 1
+        mock_task.graphql_payload = None
+
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        payload = {
+            "query": "query ListingSearchQuery { ... }",
+            "variables": {
+                "searchParameters": [
+                    {"key": "category_id", "value": "14"},
+                    {"key": "city_id", "value": "17871"},
+                ]
+            },
+        }
+        update_data = MonitoringTaskUpdate(graphql_payload=payload)
+
+        with patch(
+            "api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ):
+            updated_task = TaskService.update_task(self.db, 1, update_data)
+            self.assertEqual(updated_task.graphql_payload, payload)
+
+    def test_update_task_graphql_headers(self):
+        """Test updating the GraphQL headers."""
+        mock_task = MagicMock(spec=MonitoringTask)
+        mock_task.id = 1
+        mock_task.graphql_headers = None
+
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        headers = {
+            "content-type": "application/json",
+            "accept": "application/json",
+            "accept-language": "pl",
+            "x-client": "DESKTOP",
+        }
+        update_data = MonitoringTaskUpdate(graphql_headers=headers)
+
+        with patch(
+            "api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ):
+            updated_task = TaskService.update_task(self.db, 1, update_data)
+            self.assertEqual(updated_task.graphql_headers, headers)
+
+    def test_update_task_graphql_captured_at(self):
+        """Test updating the GraphQL captured timestamp."""
+        mock_task = MagicMock(spec=MonitoringTask)
+        mock_task.id = 1
+        mock_task.graphql_captured_at = None
+
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        captured_at = datetime(2026, 2, 8, 22, 34, 19)
+        update_data = MonitoringTaskUpdate(graphql_captured_at=captured_at)
+
+        with patch(
+            "api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ):
+            updated_task = TaskService.update_task(self.db, 1, update_data)
+            self.assertEqual(updated_task.graphql_captured_at, captured_at)
+
+    def test_update_task_all_graphql_fields(self):
+        """Test updating all GraphQL fields at once."""
+        mock_task = MagicMock(spec=MonitoringTask)
+        mock_task.id = 1
+        mock_task.name = "task1"
+        mock_task.graphql_endpoint = None
+        mock_task.graphql_payload = None
+        mock_task.graphql_headers = None
+        mock_task.graphql_captured_at = None
+
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        captured_at = datetime(2026, 2, 8, 22, 34, 19)
+        payload = {
+            "query": "query ListingSearchQuery { ... }",
+            "variables": {"searchParameters": [{"key": "category_id", "value": "14"}]},
+        }
+        headers = {
+            "content-type": "application/json",
+            "accept": "application/json",
+        }
+
+        update_data = MonitoringTaskUpdate(
+            graphql_endpoint="https://www.olx.pl/apigateway/graphql",
+            graphql_payload=payload,
+            graphql_headers=headers,
+            graphql_captured_at=captured_at,
+        )
+
+        with patch(
+            "api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ):
+            updated_task = TaskService.update_task(self.db, 1, update_data)
+            self.assertEqual(
+                updated_task.graphql_endpoint,
+                "https://www.olx.pl/apigateway/graphql",
+            )
+            self.assertEqual(updated_task.graphql_payload, payload)
+            self.assertEqual(updated_task.graphql_headers, headers)
+            self.assertEqual(updated_task.graphql_captured_at, captured_at)
+
+    def test_update_task_graphql_fields_with_other_fields(self):
+        """Test updating GraphQL fields alongside regular fields."""
+        mock_task = MagicMock(spec=MonitoringTask)
+        mock_task.id = 1
+        mock_task.name = "old_name"
+        mock_task.url = "http://old.com"
+        mock_task.graphql_endpoint = None
+
+        self.db.query.return_value.filter.return_value.first.return_value = mock_task
+
+        update_data = MonitoringTaskUpdate(
+            name="new_name",
+            graphql_endpoint="https://www.olx.pl/apigateway/graphql",
+        )
+
+        with patch(
+            "api.services.task_service.now_warsaw", lambda: datetime(2025, 1, 1)
+        ):
+            updated_task = TaskService.update_task(self.db, 1, update_data)
+            self.assertEqual(updated_task.name, "new_name")
+            self.assertEqual(
+                updated_task.graphql_endpoint,
+                "https://www.olx.pl/apigateway/graphql",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,7 +5,7 @@ Pydantic schemas for monitoring tasks.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -44,6 +44,16 @@ class MonitoringTaskUpdate(BaseModel):
         None,
         description="List of district IDs to allow (empty means all districts in city)",
     )
+    graphql_endpoint: Optional[str] = Field(None, description="The GraphQL API URL")
+    graphql_payload: Optional[dict[str, Any]] = Field(
+        None, description="The complete GraphQL request body (query + variables)"
+    )
+    graphql_headers: Optional[dict[str, Any]] = Field(
+        None, description="Sanitised request headers needed for the GraphQL call"
+    )
+    graphql_captured_at: Optional[datetime] = Field(
+        None, description="Timestamp of when the GraphQL request was captured"
+    )
 
 
 class MonitoringTaskResponse(MonitoringTaskBase):
@@ -52,6 +62,10 @@ class MonitoringTaskResponse(MonitoringTaskBase):
     id: int
     last_updated: datetime
     last_got_item: Optional[datetime] = None
+    graphql_endpoint: Optional[str] = None
+    graphql_payload: Optional[dict[str, Any]] = None
+    graphql_headers: Optional[dict[str, Any]] = None
+    graphql_captured_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
