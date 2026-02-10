@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import cities_router, districts_router, items_router, tasks_router
-from core.database import init_db
 
 stream_handler = logging.StreamHandler()
 file_handler = logging.FileHandler("app.log")
@@ -30,8 +29,8 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
     logger.info("Starting OLX Database API...")
-    init_db()
-    logger.info("Database initialized")
+    # Database schema is managed by Alembic migrations, not auto-creation
+    logger.info("Database ready")
     yield
     # Shutdown
     logger.info("Shutting down OLX Database API...")

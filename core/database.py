@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 import pytz
 from sqlalchemy import (
+    JSON,
     Column,
     DateTime,
     ForeignKey,
@@ -45,7 +46,12 @@ def get_db() -> Session:
 
 
 def init_db():
-    """Initialize database tables."""
+    """
+    Initialize database tables.
+
+    DEPRECATED: This function auto-creates tables/columns and conflicts with Alembic migrations.
+    Use `alembic upgrade head` instead to apply migrations properly.
+    """
     Base.metadata.create_all(bind=engine)
 
 
@@ -79,6 +85,13 @@ class MonitoringTask(Base):
     url = Column(String, nullable=False)
     last_updated = Column(DateTime, nullable=False)
     last_got_item = Column(DateTime, nullable=True)
+
+    # GraphQL capture fields
+    graphql_endpoint = Column(String(500), nullable=True)
+    graphql_payload = Column(JSON, nullable=True)
+    graphql_headers = Column(JSON, nullable=True)
+    graphql_captured_at = Column(DateTime, nullable=True)
+
     city_id = Column(
         Integer, ForeignKey("cities.id", ondelete="SET NULL"), nullable=True, index=True
     )
